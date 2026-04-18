@@ -1,37 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-let _clientPromise: Promise<any> | null = null;
-
+let _client: any = null;
 async function getClient() {
-  if (!_clientPromise) {
-    _clientPromise = (async () => {
-      const { default: OpenAI } = await import('openai');
-      return new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-        baseURL: 'https://api.deepseek.com/v1'
-      });
-    })();
+  if (!_client) {
+    const { default: OpenAI } = await import('openai');
+    _client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: 'https://api.deepseek.com/v1' });
   }
-  return _clientPromise;
+  return _client;
 }
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const f1: string = body.f1 || '';
-    const f2: string = body.f2 || '';
-    const f3: string = body.f3 || '';
-    const f4: string = body.f4 || '';
-    const userContent = `Poetic Form: ${f1}\nTheme: ${f2}\nEmotional Tone: ${f3}\nCultural Tradition: ${f4}`;
     const client = await getClient();
     const completion = await client.chat.completions.create({
       model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: 'You are an accomplished poet with deep knowledge of poetic forms across cultures. Given poetic form, theme, emotional tone, and cultural tradition, compose an original poem that honors the form\'s conventions while bringing fresh perspective. Include the poem plus brief notes on form structure and poetic devices used.' },
-        { role: 'user', content: userContent },
-      ]
+      messages: [{ role: 'user', content: 'You are an expert poet.
+
+Input fields: poetic_form, theme, emotional_tone, cultural_tradition.' + "\\n\\nData: " + JSON.stringify(body) }],
     });
     return NextResponse.json({ result: completion.choices[0].message.content });
-  } catch (err: any) {
+  } catch(err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
